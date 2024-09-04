@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="./output.css" rel="stylesheet" />
+    <title>API Data and Form</title>
+</head>
+<body class="bg-gray-100 p-5 max-h-screen overflow-hidden">
+    <div class="mb-5">
+        <h2 class="text-2xl font-bold mb-5">API Data and Form</h2>
+
+        <form id="form" class="form space-x-4 mb-5 flex">
+            <input
+                type="text"
+                name="name"
+                placeholder="Full Name"
+                required
+                class="w-full p-2 border border-gray-300 rounded"
+            />
+            <input
+                type="number"
+                name="age"
+                placeholder="Age"
+                required
+                class="w-full p-2 border border-gray-300 rounded"
+            />
+            <input
+                type="text"
+                name="city"
+                placeholder="City"
+                required
+                class="w-full p-2 border border-gray-300 rounded"
+            />
+            <input
+                type="text"
+                name="country"
+                placeholder="Country"
+                required
+                class="w-full p-2 border border-gray-300 rounded"
+            />
+            <button
+                type="submit"
+                class="w-1/2 bg-pink-600 text-white py-2 rounded hover:bg-pink-700"
+            >
+                Submit
+            </button>
+            <button
+                id="deleteSelectedBtn"
+                type="button"
+                class="w-1/2 bg-red-600 text-white py-2 rounded hover:bg-red-700"
+            >
+                Delete 
+            </button>
+            <input
+                id="searchInput"
+                class="p-2 border w-full"
+                type="search"
+                placeholder="Search"
+            />
+        </form>
+    </div>
+    <div class="max-h-[520px] overflow-y-auto">
+        <table class="min-w-full bg-white shadow-md rounded-lg">
+            <thead class="bg-pink-600 text-white">
+                <tr>
+                    <th class="py-2 px-2">
+                        <input id="selectAllCheckbox" type="checkbox" />
+                    </th>
+                    <th class="py-2 px-4">Name</th>
+                    <th class="py-2 px-4">Age</th>
+                    <th class="py-2 px-4">City</th>
+                    <th class="py-2 px-4">Country</th>
+                </tr>
+            </thead>
+            <tbody id="userData">
+                <!-- Dynamic content will be injected here -->
+            </tbody>
+        </table>
+    </div>
+    <script>
+        // Function to handle form submission
+        document.querySelector("#form").addEventListener("submit", async (event) => {
+            event.preventDefault();
+    
+            const formData = new FormData(event.target);
+            const data = Object.fromEntries(formData);
+            const userId = event.target.dataset.userId;
+    
+            const userData = {
+                name: data.name,
+                age: parseInt(data.age, 10),
+                address: {
+                    city: data.city,
+                    country: data.country
+                }
+            };
+    
+            try {
+                if (userId) {
+                    await updateUser(userId, userData);
+                } else {
+                    await createUser(userData);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        });
+    
+        // Function to create a new user
+        async function createUser(userData) {
+            try {
+                const response = await fetch("https://backend-library-rm25.onrender.com/students/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(userData)
+                });
+    
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+    
+                await fetchData();
+                clearForm();
+            } catch (error) {
+                console.error("Error creating user:", error);
+            }
+        }
+    
+        // Function to update an existing user
+        async function updateUser(userId, userData) {
+            try {
+                const response = await fetch(`https://backend-library-rm25.onrender.com/students/${userId}`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(userData)
+                });
+    
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+    
+                await fetchData();
+                clearForm();
+            } catch (error) {
+                console.error("Error updating user:", error);
+            }
+        }
+    
+        // Function to fetch and display user data
+        async function fetchData() {
+            try {
+                const response = await fetch("https://backend-library-rm25.onrender.com/students/");
+                const result = await response.json();
+                const users = result.data || [];
+    
+                const details = users.map(user => {
+                    const city = user.address.city || "N/A";
+                    const country = user.address.country || "N/A";
+    
+                    return `
+                        <tr class="border-b">
+                            <th class="py-2 px-2">
+                                <input type="checkbox" class="rowCheckbox" data-user-id="${user._id}" data-user-name="${user.name}" data-user-age="${user.age}" data-user-city="${user.address.city}" data-user-country="${user.address.country}" />
+                            </th>
+                            <td class="py-2 px-4 flex justify-center">${user.name}</td>
+                            <td class="py-2 px-4 text-center">${user.age}</td>
+                            <td class="py-2 px-4 text-center">${city}</td>
+                            <td class="py-2 px-4 text-center">${country}</td>
+                        </tr>
+                    `;
+                }).join("");
+    
+                document.getElementById("userData").innerHTML = details;
+    
+                document.querySelectorAll(".rowCheckbox").forEach(checkbox => {
+                    checkbox.addEventListener("change", (event) => {
+                        const checkbox = event.target;
+                        if (checkbox.checked) {
+                            const userId = checkbox.dataset.userId;
+                            const name = checkbox.dataset.userName;
+                            const age = checkbox.dataset.userAge;
+                            const city = checkbox.dataset.userCity;
+                            const country = checkbox.dataset.userCountry;
+    
+                            document.querySelector("#form [name='name']").value = name;
+                            document.querySelector("#form [name='age']").value = age;
+                            document.querySelector("#form [name='city']").value = city;
+                            document.querySelector("#form [name='country']").value = country;
+    
+                            document.querySelector("#form").dataset.userId = userId;
+                        } else {
+                            clearForm();
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                document.getElementById("userData").innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-2 px-4 text-center">Error fetching data</td>
+                    </tr>
+                `;
+            }
+        }
+    
+        // Function to clear the form
+        function clearForm() {
+            const form = document.querySelector("#form");
+            form.reset();
+            delete form.dataset.userId;
+        }
+    
+        // Function to delete selected users
+        async function deleteSelectedUsers() {
+            const selectedCheckboxes = document.querySelectorAll(".rowCheckbox:checked");
+            const deletePromises = [];
+    
+            selectedCheckboxes.forEach(checkbox => {
+                const userId = checkbox.dataset.userId;
+                deletePromises.push(
+                    fetch(`https://backend-library-rm25.onrender.com/students/${userId}`, {
+                        method: "DELETE"
+                    })
+                );
+            });
+    
+            try {
+                await Promise.all(deletePromises);
+                await fetchData();
+            } catch (error) {
+                console.error("Error deleting users:", error);
+            }
+        }
+    
+        // Event listener for delete button
+        document.getElementById("deleteSelectedBtn").addEventListener("click", deleteSelectedUsers);
+    
+        // Event listener for search input
+        document.getElementById("searchInput").addEventListener("input", function () {
+            const filter = this.value.toLowerCase();
+            const rows = document.querySelectorAll("#userData tr");
+    
+            rows.forEach(row => {
+                const name = row.children[1].textContent.toLowerCase();
+                const age = row.children[2].textContent.toLowerCase();
+                const city = row.children[3].textContent.toLowerCase();
+                const country = row.children[4].textContent.toLowerCase();
+    
+                if (name.includes(filter) || age.includes(filter) || city.includes(filter) || country.includes(filter)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        });
+    
+        // Event listener for select all checkbox
+        document.getElementById("selectAllCheckbox").addEventListener("change", function () {
+            const checkboxes = document.querySelectorAll(".rowCheckbox");
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+    
+        // Initial fetch of data
+        fetchData();
+    </script>
+</body>
+</html>
